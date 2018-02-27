@@ -13,8 +13,9 @@ using namespace std;
 const int quantum = 2;
 string file = "LargeRandomNumbers.txt";
 tokenizer* randomNumber = new tokenizer(file);
-vector<process> processes;
-vector<process> unsortedProcesses;
+vector<process*> processes;
+vector<process*> unsortedProcesses;
+vector<process*> sjfProcesses;
 queue<process*> readyQueue;
 process* runningProcess = nullptr;
 bool verbose = true;
@@ -37,35 +38,35 @@ void readProcess(string file) {
         int cpuBurst = parser->getToken();
         int cpuTime = parser->getToken();
         int ioBurst = parser->getToken();
-        process *p = new process(arrivalTime, cpuBurst, cpuTime, ioBurst);
-        processes.push_back(*p);
-        unsortedProcesses.push_back(*p);
+        process* p = new process(arrivalTime, cpuBurst, cpuTime, ioBurst);
+        processes.push_back(p);
+        unsortedProcesses.push_back(p);
+        sjfProcesses.push_back(p);
     }
 }
 
-bool comp(const process &a, const process &b) {
-    return a.arrivalTime < b.arrivalTime;
+bool comp(process* const &a, process* const &b) {
+    return a->arrivalTime < b->arrivalTime;
 }
 
-bool sjfComp(const process &a, const process &b) {
-    if (a.cpuTime != b.cpuTime) {
-        return a.cpuTime < b.cpuTime;
+bool psjfComp(process* const &a,  process* const &b){
+    if (a->remainingCpuTime != b->remainingCpuTime) {
+        return a->remainingCpuTime < b->remainingCpuTime;
     } else {
-        return a.arrivalTime < b.arrivalTime;
+        return a->arrivalTime < b->arrivalTime;
     }
 }
-
 
 
 void printInput() {
     cout<<"The original input was: "<<processes.size()<<setw(4);
-    for (vector<process>::iterator iter = unsortedProcesses.begin(); iter != unsortedProcesses.end(); ++iter) {
-        cout<<(*iter).arrivalTime<<" "<<(*iter).cpuBurst<<" "<<(*iter).cpuTime<<" "<<(*iter).ioBurst<<setw(4);
+    for (vector<process*>::iterator iter = unsortedProcesses.begin(); iter != unsortedProcesses.end(); ++iter) {
+        cout<<(*iter)->arrivalTime<<" "<<(*iter)->cpuBurst<<" "<<(*iter)->cpuTime<<" "<<(*iter)->ioBurst<<setw(4);
     }
     sort(processes.begin(), processes.end(), comp);
     cout<<endl<<"The (sorted) input is: "<<processCount<<setw(4);
-    for (vector<process>::iterator iter = processes.begin(); iter != processes.end(); ++iter) {
-        cout<<(*iter).arrivalTime<<" "<<(*iter).cpuBurst<<" "<<(*iter).cpuTime<<" "<<(*iter).ioBurst<<setw(4);
+    for (vector<process*>::iterator iter = processes.begin(); iter != processes.end(); ++iter) {
+        cout<<(*iter)->arrivalTime<<" "<<(*iter)->cpuBurst<<" "<<(*iter)->cpuTime<<" "<<(*iter)->ioBurst<<setw(4);
     }
     cout<<endl<<endl<<"This detailed printout gives the state and remaining burst for each process"<<endl;
 }
@@ -73,18 +74,18 @@ void printInput() {
 void printProcesses() {
     if(verbose) cout<<"Before cycle     "<<cycle + 1<<":    ";
     bool isIO = false;
-    for (vector<process>::iterator iter = processes.begin(); iter != processes.end(); ++iter) {
-        if((*iter).state == "ready") { (*iter).waitingTime++; }
-        if((*iter).state == "blocked") { isIO = true; }
-        if(verbose) cout<<(*iter).state<<"  "<<(*iter).remainingTime<<"     ";
+    for (vector<process*>::iterator iter = processes.begin(); iter != processes.end(); ++iter) {
+        if((*iter)->state == "ready") { (*iter)->waitingTime++; }
+        if((*iter)->state == "blocked") { isIO = true; }
+        if(verbose) cout<<(*iter)->state<<"  "<<(*iter)->remainingTime<<"     ";
     }
     if (isIO) ioRunningTime++;
     if(verbose) cout<<endl;
 }
 
 bool allTerminated() {
-    for (vector<process>::iterator iter = processes.begin(); iter != processes.end(); ++iter) {
-        if ((*iter).state != "terminated") {
+    for (vector<process*>::iterator iter = processes.begin(); iter != processes.end(); ++iter) {
+        if ((*iter)->state != "terminated") {
             return false;
         }
     }
@@ -106,11 +107,12 @@ int stateToNumber(string state) {
 }
 
 void pringSummary() {
-    float averageTurnaround = 0, averageWaiting = 0, cpuRunningTime = 0, throughput = (100 / (float) cycle) * (float) processCount;
+    float averageTurnaround = 0, averageWaiting = 0, cpuRunningTime = 0;
+    double throughput = (100 / (double) cycle) * (double) processCount;
     for(int i = 0; i < processes.size(); i++) {
-        averageTurnaround += processes[i].turnaroundTime;
-        averageWaiting += processes[i].waitingTime;
-        cpuRunningTime += processes[i].cpuTime;
+        averageTurnaround += processes[i]->turnaroundTime;
+        averageWaiting += processes[i]->waitingTime;
+        cpuRunningTime += processes[i]->cpuTime;
     }
     cout<<endl;
     cout<<"Summary Data: "<<endl;
@@ -122,15 +124,16 @@ void pringSummary() {
     cout<<"Average waiting time: "<<fixed<<setprecision(6)<<averageWaiting / processes.size()<<endl<<endl;
 
 }
+
 void printProcessesState() {
     cout<<endl;
     for(int i = 0; i < processes.size(); i++) {
         cout<<"Process "<<i<<":"<<endl;
-        printf("(A,B,C,IO) = (%d,%d,%d,%d)",processes[i].arrivalTime,processes[i].cpuBurst,processes[i].cpuTime,processes[i].ioBurst);
-        cout<<endl<<"Finishing time: "<<processes[i].finishingTime<<endl;
-        cout<<"Turnaround time: "<<processes[i].turnaroundTime<<endl;
-        cout<<"I/O time: "<<processes[i].ioTime<<endl;
-        cout<<"Waiting time: "<<processes[i].waitingTime<<endl<<endl;
+        printf("(A,B,C,IO) = (%d,%d,%d,%d)",processes[i]->arrivalTime,processes[i]->cpuBurst,processes[i]->cpuTime,processes[i]->ioBurst);
+        cout<<endl<<"Finishing time: "<<processes[i]->finishingTime<<endl;
+        cout<<"Turnaround time: "<<processes[i]->turnaroundTime<<endl;
+        cout<<"I/O time: "<<processes[i]->ioTime<<endl;
+        cout<<"Waiting time: "<<processes[i]->waitingTime<<endl<<endl;
     }
 }
 
@@ -144,15 +147,15 @@ void reset() {
         readyQueue.pop();
     }
     for(int i = 0; i < processes.size(); i++) {
-        processes[i].remainingCpuTime = processes[i].cpuTime;
-        processes[i].state = "unstarted";
-        processes[i].remainingTime = 0;
-        processes[i].start = false;
-        processes[i].finishingTime = 0;
-        processes[i].turnaroundTime = 0;
-        processes[i].ioTime = 0;
-        processes[i].waitingTime = 0;
-        processes[i].preempted = 0;
+        processes[i]->remainingCpuTime = processes[i]->cpuTime;
+        processes[i]->state = "unstarted";
+        processes[i]->remainingTime = 0;
+        processes[i]->start = false;
+        processes[i]->finishingTime = 0;
+        processes[i]->turnaroundTime = 0;
+        processes[i]->ioTime = 0;
+        processes[i]->waitingTime = 0;
+        processes[i]->preempted = 0;
     }
 }
 
@@ -208,7 +211,7 @@ void FCFS() {
         printProcesses();
         cycle++;
         for (int i = 0; i < processes.size(); i++) {
-            changeState(&processes[i]);
+            changeState(processes[i]);
         }
         //ready => running
         if (runningProcess == nullptr && !readyQueue.empty()) {
@@ -227,14 +230,14 @@ void FCFS() {
     pringSummary();
 }
 
-void uniRunProcess(process &process) {
-    if (process.state == "ready") {
-        process.state = "running";
+void uniRunProcess(process* &process) {
+    if (process->state == "ready") {
+        process->state = "running";
         int cpuBurst = randomOS();
         if(verbose) cout<<"Find burst when choosing ready process to run "<<cpuBurst;
-        cpuBurst = 1 + cpuBurst % process.cpuBurst;
+        cpuBurst = 1 + cpuBurst % process->cpuBurst;
         if(verbose) cout<<" "<<cpuBurst<<endl;
-        process.remainingTime = cpuBurst > process.remainingCpuTime ? process.remainingCpuTime : cpuBurst;
+        process->remainingTime = cpuBurst > process->remainingCpuTime ? process->remainingCpuTime : cpuBurst;
     }
 }
 
@@ -242,12 +245,12 @@ void uniProgrammed() {
     printInput();
     reset();
     for(int i = 0; i < processes.size(); i++) {
-        while(processes[i].state != "terminated") {
+        while(processes[i]->state != "terminated") {
             uniRunProcess(processes[i]);
             printProcesses();
             cycle++;
             for (int i = 0; i < processes.size(); i++) {
-                changeState(&processes[i]);
+                changeState(processes[i]);
             }
             uniRunProcess(processes[i]);
         }
@@ -265,7 +268,7 @@ void RR(){
         printProcesses();
         cycle++;
         for (int i = 0; i < processes.size(); i++) {
-            changeState(&processes[i]);
+            changeState(processes[i]);
         }
         //ready => running
         if (runningProcess == nullptr && !readyQueue.empty()) {
@@ -296,30 +299,31 @@ void RR(){
 void SJF(){
     reset();
     printInput();
-    sort(processes.begin(), processes.end(), sjfComp);
+    //sort(processes.begin(), processes.end(), sjfComp);
     while( !allTerminated() ) {
         printProcesses();
         cycle++;
         for (int i = 0; i < processes.size(); i++) {
-            changeState(&processes[i]);
+            changeState(processes[i]);
         }
+        sort(sjfProcesses.begin(),sjfProcesses.end(),psjfComp);
         //ready => running
-        for(int i = 0; i < processes.size(); i++) {
-            if (processes[i].state == "running") break;
-            if (processes[i].state == "ready") {
+        for(int i = 0; i < sjfProcesses.size(); i++) {
+            if (sjfProcesses[i]->state == "running") break;
+            if (sjfProcesses[i]->state == "ready") {
                 if (runningProcess == nullptr) {
-                    runningProcess = &processes[i];
+                    runningProcess = sjfProcesses[i];
                 } else {
                     (*runningProcess).state = "ready";
-                    runningProcess = &processes[i];
+                    runningProcess = sjfProcesses[i];
                 }
                 (*runningProcess).state = "running";
-                if (processes[i].remainingTime == 0) {
+                if (runningProcess->remainingTime == 0) {
                     int cpuBurst = randomOS();
                     if(verbose) cout<<"Find burst when choosing ready process to run "<<cpuBurst;
                     cpuBurst = 1 + cpuBurst % (*runningProcess).cpuBurst;
                     if(verbose) cout<<" "<<cpuBurst<<endl;
-                    (*runningProcess).remainingTime =  cpuBurst > (*runningProcess).remainingCpuTime ? (*runningProcess).remainingTime : cpuBurst;
+                    (*runningProcess).remainingTime =  cpuBurst;//> (*runningProcess).remainingCpuTime ? (*runningProcess).remainingTime : cpuBurst;
                 }
                 break;
             }
@@ -336,7 +340,7 @@ int main(int argc, char* argv[]) {
     //file = argv[2];
     //readProcess(fileName);
     //verbose = argc == 3 ? true:false;
-    readProcess("example6.txt");
+    readProcess("example7.txt");
     FCFS();
     RR();
     uniProgrammed();
