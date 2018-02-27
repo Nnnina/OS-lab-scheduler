@@ -11,6 +11,8 @@ iostream
 -
 fstream
 -
+algorithm
+-
 map
 -
 vector

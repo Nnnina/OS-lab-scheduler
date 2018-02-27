@@ -1,5 +1,6 @@
 #include <iostream>
 #include <fstream>
+#include <algorithm>
 #include <map>
 #include <vector>
 #include <iomanip>
@@ -11,7 +12,7 @@
 using namespace std;
 //------------global variable--------
 const int quantum = 2;
-string file = "LargeRandomNumbers.txt";
+string file = "random-numbers.txt";
 tokenizer* randomNumber = new tokenizer(file);
 vector<process*> processes;
 vector<process*> unsortedProcesses;
@@ -336,11 +337,20 @@ void SJF(){
 }
 
 int main(int argc, char* argv[]) {
-    //string fileName(argv[1]);
-    //file = argv[2];
-    //readProcess(fileName);
-    //verbose = argc == 3 ? true:false;
-    readProcess("example7.txt");
+//    readProcess("example.txt");
+//    FCFS();
+//    RR();
+//    uniProgrammed();
+//    SJF();
+//    return 0;
+    if (argc == 2) {
+        string fileName(argv[1]);
+        readProcess(fileName);
+    } else {
+        string fileName(argv[2]);
+        readProcess(fileName);
+    }
+    verbose = argc == 3 ? true:false;
     FCFS();
     RR();
     uniProgrammed();
